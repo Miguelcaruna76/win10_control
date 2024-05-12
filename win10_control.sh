@@ -36,19 +36,16 @@ convert_iso_to_qcow2() {
     qemu-img convert -f raw -O qcow2 windows_10.iso windows_10.qcow2
 }
 
-# Function to start the virtual machine and ngrok TCP forwarding
+# Function to start the VirtualBox VM
 start_vm() {
-    ./ngrok tcp 5900 &
-    ngrok_url=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
     qemu-system-x86_64 -hda windows_10.qcow2 &
-    echo "VM started. Connect using VNC at: $ngrok_url"
+    echo "VirtualBox VM started."
 }
 
-# Function to stop the virtual machine and ngrok TCP forwarding
+# Function to stop the VirtualBox VM
 stop_vm() {
-    pkill ngrok
     pkill qemu-system-x86_64
-    echo "VM and ngrok stopped."
+    echo "VirtualBox VM stopped."
 }
 
 # Main function
