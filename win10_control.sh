@@ -1,5 +1,16 @@
 #!/bin/bash
 
+# Function to ensure VirtualBox kernel module is loaded
+ensure_vbox_kernel_module() {
+    if ! lsmod | grep -q vboxdrv; then
+        echo "VirtualBox kernel module is not loaded. Attempting to load it..."
+        if ! sudo modprobe vboxdrv; then
+            echo "Failed to load the VirtualBox kernel module."
+            exit 1
+        fi
+    fi
+}
+
 # Function to install VirtualBox and dependencies
 install_virtualbox() {
     sudo apt-get update
@@ -40,17 +51,12 @@ convert_iso_to_qcow2() {
 create_virtualbox_vm() {
     # Define VM name and disk location
     vm_name="Windows 10 VM"
-    disk_path="windows_10.qcow2"
 
-    # Create VM
-    VBoxManage createvm --name "$vm_name" --ostype Windows10_64 --register
+    # Import VM from disk image
+    VBoxManage import windows_10.qcow2 --vsys 0 --vmname "$vm_name"
 
     # Add memory, VRAM, and CPUs
     VBoxManage modifyvm "$vm_name" --memory 2048 --vram 128 --cpus 2 --audio none
-
-    # Attach disk
-    VBoxManage storagectl "$vm_name" --name "SATA Controller" --add sata --controller IntelAhci
-    VBoxManage storageattach "$vm_name" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "$disk_path"
 
     # Attach network adapter with ngrok TCP address
     ngrok_url=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
@@ -60,6 +66,7 @@ create_virtualbox_vm() {
 
 # Function to start the VirtualBox VM
 start_vm() {
+    ensure_vbox_kernel_module
     create_virtualbox_vm
     VBoxManage startvm "Windows 10 VM"
 }
