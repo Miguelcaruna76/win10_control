@@ -36,16 +36,37 @@ convert_iso_to_qcow2() {
     qemu-img convert -f raw -O qcow2 windows_10.iso windows_10.qcow2
 }
 
+# Function to create VirtualBox virtual machine and attach disk and network adapter
+create_virtualbox_vm() {
+    # Define VM name and disk location
+    vm_name="Windows 10 VM"
+    disk_path="windows_10.qcow2"
+
+    # Create VM
+    VBoxManage createvm --name "$vm_name" --ostype Windows10_64 --register
+
+    # Add memory, VRAM, and CPUs
+    VBoxManage modifyvm "$vm_name" --memory 2048 --vram 128 --cpus 2 --audio none
+
+    # Attach disk
+    VBoxManage storagectl "$vm_name" --name "SATA Controller" --add sata --controller IntelAhci
+    VBoxManage storageattach "$vm_name" --storagectl "SATA Controller" --port 0 --device 0 --type hdd --medium "$disk_path"
+
+    # Attach network adapter with ngrok TCP address
+    ngrok_url=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+    VBoxManage modifyvm "$vm_name" --nic1 nat
+    VBoxManage modifyvm "$vm_name" --natpf1 "tcp-port5900,tcp,,5900,,5900"
+}
+
 # Function to start the VirtualBox VM
 start_vm() {
-    qemu-system-x86_64 -hda windows_10.qcow2 &
-    echo "VirtualBox VM started."
+    create_virtualbox_vm
+    VBoxManage startvm "Windows 10 VM"
 }
 
 # Function to stop the VirtualBox VM
 stop_vm() {
-    pkill qemu-system-x86_64
-    echo "VirtualBox VM stopped."
+    VBoxManage controlvm "Windows 10 VM" poweroff
 }
 
 # Main function
